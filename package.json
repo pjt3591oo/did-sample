@@ -15,11 +15,16 @@
     "@veramo/credential-w3c": "^6.0.2",
     "@veramo/data-store": "^6.0.2",
     "@veramo/did-manager": "^6.0.2",
+    "@veramo/did-provider-key": "^6.0.2",
     "@veramo/did-provider-web": "^6.0.2",
     "@veramo/did-resolver": "^6.0.2",
     "@veramo/key-manager": "^6.0.2",
     "@veramo/kms-local": "^6.0.2",
+    "axios": "^1.13.4",
+    "cors": "^2.8.6",
     "did-resolver": "^4.1.0",
+    "express": "^5.2.1",
+    "key-did-resolver": "^4.0.0",
     "sqlite3": "^5.1.7",
     "web-did-resolver": "^2.0.32"
   }
