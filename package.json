@@ -1,0 +1,26 @@
+{
+  "name": "did-veramo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@veramo/core": "^6.0.2",
+    "@veramo/credential-w3c": "^6.0.2",
+    "@veramo/data-store": "^6.0.2",
+    "@veramo/did-manager": "^6.0.2",
+    "@veramo/did-provider-web": "^6.0.2",
+    "@veramo/did-resolver": "^6.0.2",
+    "@veramo/key-manager": "^6.0.2",
+    "@veramo/kms-local": "^6.0.2",
+    "did-resolver": "^4.1.0",
+    "sqlite3": "^5.1.7",
+    "web-did-resolver": "^2.0.32"
+  }
+}
