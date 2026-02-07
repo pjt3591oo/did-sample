@@ -37,7 +37,7 @@ async function setupIssuer() {
         const signatureBytes = await crypto.subtle.sign('Ed25519', privateKey, dataBuffer);
         return Buffer.from(signatureBytes).toString('base64url');
     };
-    issuer = { did, signer, alg: 'EdDSA' };
+
 
     // 3. did:web DID Document 생성 (이 부분은 did:web의 특성상 수동으로 유지)
     const rawPublicKey = new Uint8Array(await crypto.subtle.exportKey('raw', publicKey));
@@ -60,12 +60,15 @@ async function setupIssuer() {
         authentication: [keyId],
     };
 
+    issuer = { did, signer, alg: 'EdDSA' };
+
     console.log('✅ Issuer setup complete (using did-jwt-vc style)');
     console.log('Issuer DID:', issuer.did);
 }
 
 // --- did:web의 핵심: /.well-known/did.json 경로로 DID Document 제공 ---
 app.get('/.well-known/did.json', (req, res) => {
+    console.log('\n🔵 (외부 요청) /.well-known/did.json 엔드포인트가 호출되었습니다!');
     if (!issuerDidDocument) {
         return res.status(503).send('Issuer not ready');
     }
@@ -91,8 +94,12 @@ app.post('/issue-credential', async (req, res) => {
             },
         };
 
-        // 수동 JWT 서명 대신 'createVerifiableCredentialJwt' 함수를 사용합니다.
-        const vcJwt = await createVerifiableCredentialJwt(vcPayload, issuer);
+        // 'createVerifiableCredentialJwt' 함수의 세 번째 인자로 header 옵션을 전달하여 kid를 명시적으로 지정합니다.
+        const vcJwt = await createVerifiableCredentialJwt(
+            vcPayload, 
+            issuer,
+            { header: { kid: issuerDidDocument.verificationMethod[0].id, typ: 'JWT' } }
+        );
 
         console.log('🟢 발급된 VC (JWT):', vcJwt);
         res.json({ vc: vcJwt });
