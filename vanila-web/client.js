@@ -1,88 +1,74 @@
 
 import axios from 'axios';
-import * as jose from 'jose';
-import nacl from 'tweetnacl';
-import { base58btc as bs58 } from 'multiformats/bases/base58';
-import { Buffer } from 'buffer';
+// 필요한 고수준 라이브러리들을 임포트합니다.
+import { createVerifiablePresentationJwt } from 'did-jwt-vc';
+import { generateKeyPair } from 'jose';
+import { base58btc } from 'multiformats/bases/base58';
 
-// --- API 클라이언트 설정 ---
 const api = axios.create({
     baseURL: 'http://localhost:4000',
 });
 
 // --- Holder 설정 ---
-let holderKeys;
-let holderDid;
+let holder;
 
-// --- Holder의 키 쌍과 did:key DID 생성 ---
+// --- Holder의 키 쌍과 did:key DID 생성 (리팩터링) ---
 async function setupHolder() {
-    // 1. Ed25519 키 쌍 생성
-    holderKeys = nacl.sign.keyPair();
-
-    // 2. did:key DID 생성
-    // `did:key`는 공개키 정보를 DID 자체에 포함하는 방식입니다.
-    // Ed25519 공개키(32바이트)에 멀티코덱 프리픽스(0xed01)를 붙인 후, Base58-btc로 인코딩합니다.
-    const multicodecPublicKey = new Uint8Array(2 + holderKeys.publicKey.length);
+    // 1. 키 생성 방식을 'jose.generateKeyPair'로 변경
+    const { publicKey, privateKey } = await generateKeyPair('Ed25519');
+    
+    // 2. did:key DID 생성 로직을 Web Crypto API 키에 맞게 수정
+    const rawPublicKey = new Uint8Array(await crypto.subtle.exportKey('raw', publicKey));
+    const multicodecPublicKey = new Uint8Array(2 + rawPublicKey.length);
     multicodecPublicKey.set([0xed, 0x01]); // Ed25519 public key multicodec prefix
-    multicodecPublicKey.set(holderKeys.publicKey, 2);
-    const didKeyIdentifier = bs58.encode(multicodecPublicKey); // z... 로 시작하는 식별자
-    holderDid = `did:key:${didKeyIdentifier}`;
+    multicodecPublicKey.set(rawPublicKey, 2);
+    const did = `did:key:${base58btc.encode(multicodecPublicKey)}`;
 
-    console.log('✅ Holder setup complete');
-    console.log('Holder DID:', holderDid);
+    // 3. did-jwt-vc 라이브러리에서 사용할 Signer 객체 생성
+    const signer = async (data) => {
+        const dataBuffer = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+        const signatureBytes = await crypto.subtle.sign('Ed25519', privateKey, dataBuffer);
+        return Buffer.from(signatureBytes).toString('base64url');
+    };
+    holder = { did, signer, alg: 'EdDSA' };
+
+    console.log('✅ Holder setup complete (using did-jwt-vc style)');
+    console.log('Holder DID:', holder.did);
 }
 
 
-// --- 전체 DID 흐름 실행 ---
+// --- 전체 DID 흐름 실행 (리팩터링) ---
 async function main() {
-    // 1. Holder 초기화 (DID 생성)
     await setupHolder();
-    console.log(`\n(1/4)  credential 발급을 요청합니다...`);
+    console.log(`\n(1/4) credential 발급을 요청합니다...`);
 
-    // 2. Issuer에게 VC 발급 요청
-    // 자신의 DID를 body에 담아 서버의 `/issue-credential` 엔드포인트로 보냅니다.
+    // 1. Issuer에게 VC 발급 요청
     const issueResponse = await api.post('/issue-credential', {
-        holderDid: holderDid,
+        holderDid: holder.did,
     });
     const vcJwt = issueResponse.data.vc;
     console.log('✅ (1/4) VC를 성공적으로 발급받았습니다.');
     console.log('VC (JWT):', vcJwt);
 
 
-    // 3. 발급받은 VC를 담아 VP 생성
+    // 2. 발급받은 VC를 담아 VP 생성
     console.log(`\n(2/4) VP를 생성합니다...`);
-    // VP는 VC의 소유권을 증명하기 위한 표현물입니다.
-    // Holder는 자신의 개인키로 VP 전체를 서명합니다.
     const vpPayload = {
-        '@context': ['https://www.w3.org/2018/credentials/v1'],
-        type: ['VerifiablePresentation'],
-        // VP에 포함시키는 VC (하나 또는 여러 개가 될 수 있음)
-        verifiableCredential: [vcJwt],
+        vp: {
+            '@context': ['https://www.w3.org/2018/credentials/v1'],
+            type: ['VerifiablePresentation'],
+            verifiableCredential: [vcJwt],
+        },
     };
-
-    const privateKeyJwk = {
-        kty: 'OKP',
-        crv: 'Ed25519',
-        x: Buffer.from(holderKeys.publicKey).toString('base64url'),
-        d: Buffer.from(holderKeys.secretKey.slice(0, 32)).toString('base64url'),
-    };
-    const privateKey = await jose.importJWK(privateKeyJwk, 'EdDSA');
-    const vpJwt = await new jose.SignJWT({ vp: vpPayload })
-        .setProtectedHeader({
-            alg: 'EdDSA',
-            // did:key에서 key id는 DID 자신과 동일합니다.
-            kid: `${holderDid}#${holderDid.split(':')[2]}`
-        })
-        .setIssuer(holderDid) // VP의 발급자는 Holder 자신
-        .setAudience('verifier-did') // VP를 받을 대상(검증자)
-        .setJti(crypto.randomUUID())
-        .sign(privateKey);
+    
+    // 수동 JWT 서명 대신 'createVerifiablePresentationJwt' 함수를 사용합니다.
+    const vpJwt = await createVerifiablePresentationJwt(vpPayload, holder);
 
     console.log('✅ (2/4) VP를 성공적으로 생성했습니다.');
     console.log('VP (JWT):', vpJwt);
 
 
-    // 4. 생성한 VP를 검증자(서버)에게 제출
+    // 3. 생성한 VP를 검증자(서버)에게 제출
     console.log(`\n(3/4) 생성된 VP의 검증을 요청합니다...`);
     const verifyResponse = await api.post('/verify-presentation', {
         vp: vpJwt,
@@ -91,14 +77,14 @@ async function main() {
     console.log('✅ (3/4) VP 검증 결과를 받았습니다.');
 
 
-    // 5. 최종 검증 결과 출력
+    // 4. 최종 검증 결과 출력
     console.log(`\n(4/4) 최종 검증 결과:`);
     console.log(JSON.stringify(verificationResult, null, 2));
 
     if (verificationResult.verified) {
         console.log("\n🎉 모든 검증 과정을 통과했습니다!");
     } else {
-        console.log("\n❌ 검증에 실패했습니다.");
+        console.log("\n❌ 검증에 실패했습니다.", verificationResult.error || '');
     }
 }
 
