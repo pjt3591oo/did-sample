@@ -21,6 +21,7 @@
     "@veramo/key-manager": "^6.0.2",
     "@veramo/kms-local": "^6.0.2",
     "axios": "^1.13.4",
+    "bs58": "^6.0.0",
     "cors": "^2.8.6",
     "did-jwt": "^8.0.18",
     "did-jwt-vc": "^4.0.16",
@@ -30,6 +31,7 @@
     "key-did-resolver": "^4.0.0",
     "multiformats": "^13.4.2",
     "sqlite3": "^5.1.7",
+    "tweetnacl": "^1.0.3",
     "web-did-resolver": "^2.0.32"
   }
 }
