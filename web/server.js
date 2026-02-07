@@ -25,6 +25,7 @@ app.get('/.well-known/did.json', (req, res) => {
     res.json(didDocument)
 })
 
+// vc
 app.post('/issue-credential', async (req, res) => {
     try {
         if (!didDocument) {
@@ -53,6 +54,7 @@ app.post('/issue-credential', async (req, res) => {
     }
 })
 
+// vp
 app.post('/verify-presentation', async (req, res) => {
     try {
         const { presentation } = req.body

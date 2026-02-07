@@ -20,6 +20,7 @@ app.use(express.json())
 let agent;
 let issuer;
 
+// vc
 app.post('/issue-credential', async (req, res) => {
     try {
         const { holderDid } = req.body
@@ -45,6 +46,7 @@ app.post('/issue-credential', async (req, res) => {
     }
 })
 
+// vp
 app.post('/verify-presentation', async (req, res) => {
     try {
         const { presentation } = req.body
