@@ -133,6 +133,40 @@ npm install
 
 ---
 
+## DID 흐름 구현 (온체인 상호작용 - `ethr-flow/` 디렉토리)
+
+이 섹션은 실제 이더리움 테스트넷(Sepolia)과의 온체인 상호작용을 포함하는 `did:ethr` 흐름을 보여줍니다. `did:ethr`은 이더리움 주소 기반의 DID이며, DID의 소유권 및 속성 관리는 이더리움 블록체인 상의 DID 레지스트리 컨트랙트를 통해 이루어집니다.
+
+**주의**: 이 스크립트를 실행하려면 다음 준비물이 필요합니다.
+
+*   **Infura Project ID**: Sepolia 테스트넷에 연결하기 위한 Infura Project ID가 필요합니다. `ethr-flow/agent.js` 파일 내의 `INFURA_PROJECT_ID` 변수를 자신의 Infura Project ID로 교체해야 합니다.
+*   **Sepolia ETH**: `issuerPrivKey`에 해당하는 이더리움 주소에 트랜잭션 수수료(gas fee)를 지불할 Sepolia ETH가 충분히 있어야 합니다. Sepolia Faucet(예: `https://sepoliafaucet.com/`)에서 테스트 ETH를 얻을 수 있습니다.
+
+### `did:ethr` 흐름 실행 (Sepolia 테스트넷)
+
+1.  **Infura Project ID 설정**: `ethr-flow/agent.js` 파일을 열고, `INFURA_PROJECT_ID` 변수를 자신의 값으로 교체합니다.
+
+    ```javascript
+    const INFURA_PROJECT_ID = 'YOUR_INFURA_PROJECT_ID'; // <-- 자신의 Infura Project ID로 교체
+    ```
+
+2.  **클라이언트 실행**: 터미널을 열고 다음 명령어를 실행합니다.
+
+    ```bash
+    node ethr-flow/agent.js
+    ```
+
+    스크립트는 다음을 수행합니다:
+    *   `issuerPrivKey`로부터 발급자(Issuer) DID를 결정합니다.
+    *   Sepolia 테스트넷에 배포된 공식 `ethr-did-registry` 컨트랙트를 통해 해당 DID의 소유권을 확인하고, 등록되지 않았다면 등록 트랜잭션을 전송합니다.
+    *   검증 가능한 자격 증명(VC)을 생성합니다.
+    *   생성된 VC를 포함하는 검증 가능한 프레젠테이션(VP)을 생성합니다.
+    *   생성된 VP를 검증하고, 그 결과를 출력합니다.
+
+    **예상 출력**: 모든 단계가 성공적으로 완료되면 "✅ VP Verification Successful!" 메시지와 함께 검증된 자격 증명 데이터가 출력됩니다. DID 등록은 이미 등록된 경우 건너뛸 수 있습니다.
+
+---
+
 ## 예상 출력
 
 모든 `client.js` 및 `external-verifier.js` 스크립트를 실행하면 각 터미널에 상세한 과정과 함께 최종 `verified: true` 결과가 출력되어 성공적인 DID 흐름을 확인할 수 있습니다.
